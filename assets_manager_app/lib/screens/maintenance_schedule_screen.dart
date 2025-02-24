@@ -1,0 +1,295 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/asset_history.dart';
+import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
+import '../models/asset.dart';
+import 'package:assets_manager_app/screens/details/asset_details_screen.dart';
+import '../services/notification_service.dart';
+
+class MaintenanceScheduleScreen extends StatefulWidget {
+  final String assetId;
+  final String assetName;
+  final DateTime? lastMaintenanceDate;
+
+  MaintenanceScheduleScreen({
+    required this.assetId,
+    required this.assetName,
+    this.lastMaintenanceDate,
+  });
+
+  @override
+  _MaintenanceScheduleScreenState createState() => _MaintenanceScheduleScreenState();
+}
+
+class _MaintenanceScheduleScreenState extends State<MaintenanceScheduleScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+  final _uuid = Uuid();
+  final _notificationService = NotificationService();
+
+  DateTime? _scheduledDate;
+  String _maintenanceType = 'Preventive';
+  late TextEditingController _descriptionController;
+  late TextEditingController _estimatedCostController;
+  String _priority = 'Medium';
+
+  final List<String> _maintenanceTypes = [
+    'Preventive',
+    'Corrective',
+    'Condition-based',
+    'Predictive',
+    'Emergency',
+  ];
+
+  final List<String> _priorities = [
+    'Low',
+    'Medium',
+    'High',
+    'Critical',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _descriptionController = TextEditingController();
+    _estimatedCostController = TextEditingController();
+  }
+
+  Future<void> _selectScheduledDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _scheduledDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+    );
+    if (picked != null) {
+      setState(() {
+        _scheduledDate = picked;
+      });
+    }
+  }
+
+  Future<void> _submitSchedule(Asset asset) async {
+    if (_formKey.currentState!.validate()) {
+      if (_scheduledDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please select a scheduled date')),
+        );
+        return;
+      }
+
+      final user = _auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User not logged in')),
+        );
+        return;
+      }
+
+      final maintenanceId = _uuid.v4();
+      final formattedDate = DateFormat('yyyy-MM-dd').format(_scheduledDate!);
+      final maintenanceDetails =
+          '$_maintenanceType maintenance on $formattedDate: ${_descriptionController.text}';
+
+      try {
+        final timestamp = DateTime.now();
+
+        // Create maintenance record
+        final maintenanceData = {
+          'assetId': asset.id,
+          'assetName': asset.name,
+          'scheduledDate': _scheduledDate,
+          'maintenanceType': _maintenanceType,
+          'description': _descriptionController.text,
+          'estimatedCost': double.tryParse(_estimatedCostController.text) ?? 0.0,
+          'priority': _priority,
+          'status': 'SCHEDULED',
+          'scheduledBy': user.uid,
+          'scheduledByName': user.displayName ?? user.email,
+          'createdAt': timestamp,
+        };
+
+        // Update or create asset document
+        await _firestore.collection('assets').doc(asset.id).set({
+          'nextMaintenanceDate': _scheduledDate,
+          'maintenanceStatus': 'SCHEDULED',
+        }, SetOptions(merge: true));
+
+        // Create history entry
+        final history = AssetHistory(
+          id: maintenanceId,
+          assetId: asset.id,
+          action: 'MAINTENANCE_SCHEDULED',
+          userId: user.uid,
+          userName: user.displayName ?? user.email ?? 'Unknown User',
+          details: maintenanceDetails,
+          timestamp: timestamp,
+          changes: maintenanceData,
+        );
+
+        print("About to add maintenance history for assetId: ${widget.assetId}");
+        await _firestore
+            .collection('assets')
+            .doc(asset.id)
+            .collection('history')
+            .add(history.toMap());
+
+        // Schedule maintenance record
+        final docRef = await _firestore.collection('maintenanceSchedules').add(maintenanceData);
+
+        // Schedule notifications
+        await _notificationService.scheduleMaintenance(
+          id: asset.id,
+          assetName: asset.name,
+          maintenanceDate: _scheduledDate!,
+          maintenanceType: _maintenanceType,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Maintenance scheduled successfully')),
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        print("Error scheduling maintenance: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error scheduling maintenance: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print("MaintenanceScheduleScreen - build - assetId: ${widget.assetId}");
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Schedule Maintenance'),
+      ),
+      body: FutureBuilder<DocumentSnapshot>(
+        future: _firestore.collection('assets').doc(widget.assetId).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error loading asset: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return Center(child: Text('Asset not found'));
+          }
+
+          final asset = Asset.fromFirestore(snapshot.data!);
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Asset: ${asset.name}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (widget.lastMaintenanceDate != null)
+                    Text(
+                      'Last Maintenance: ${DateFormat('MMM dd, yyyy').format(widget.lastMaintenanceDate!)}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  SizedBox(height: 16),
+                  ListTile(
+                    title: Text('Scheduled Date*'),
+                    subtitle: Text(_scheduledDate == null
+                        ? 'Select date'
+                        : DateFormat('MMM dd, yyyy').format(_scheduledDate!)),
+                    trailing: Icon(Icons.calendar_today),
+                    onTap: _selectScheduledDate,
+                  ),
+                  SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _maintenanceType,
+                    decoration: InputDecoration(
+                      labelText: 'Maintenance Type*',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _maintenanceTypes.map((type) {
+                      return DropdownMenuItem(
+                        value: type,
+                        child: Text(type),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _maintenanceType = value!;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description*',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Required field' : null,
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _estimatedCostController,
+                    decoration: InputDecoration(
+                      labelText: 'Estimated Cost',
+                      border: OutlineInputBorder(),
+                      prefixText: '\$',
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  ),
+                  SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _priority,
+                    decoration: InputDecoration(
+                      labelText: 'Priority*',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _priorities.map((priority) {
+                      return DropdownMenuItem(
+                        value: priority,
+                        child: Text(priority),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _priority = value!;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => _submitSchedule(asset),
+                    child: Text('Schedule Maintenance'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _estimatedCostController.dispose();
+    super.dispose();
+  }
+}

@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ... existing manifest content ... -->
+    <application
+        android:label="assets_manager_app"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        
+        <!-- Add this meta-data tag inside the application tag -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+
+        <!-- ... rest of your application content ... -->
+    </application>
+</manifest>

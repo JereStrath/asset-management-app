@@ -1,0 +1,32 @@
+// Include the Flutter plugins
+include ':app'
+
+// Configure plugin repositories
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
+
+// Configure dependency repositories
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// Load properties file
+def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
+def properties = new Properties()
+localPropertiesFile.withReader("UTF-8") { reader -> properties.load(reader) }
+
+// Get Flutter SDK path
+def flutterSdkPath = properties.getProperty("flutter.sdk")
+assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+
+// Apply the Flutter plugin loader
+apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"

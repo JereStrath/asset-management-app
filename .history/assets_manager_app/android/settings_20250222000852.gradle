@@ -1,0 +1,69 @@
+pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        def propertiesFile = new File(settingsDir.parentFile, 'local.properties')
+        if (propertiesFile.exists()) {
+            properties.load(propertiesFile.newDataInputStream())
+            return properties.getProperty('flutter.sdk')
+        }
+        return null
+    }()
+
+    includeBuild("${flutterSdkPath}/packages/flutter_tools/gradle")
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+
+    plugins {
+        id 'dev.flutter.flutter-gradle-plugin' version '1.0.0' apply false
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'android'
+include ':app'
+
+// Get Flutter SDK path from local.properties
+def flutterProjectRoot = rootProject.projectDir.parentFile
+def localProperties = new Properties()
+def localPropertiesFile = new File(flutterProjectRoot, "local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader -> localProperties.load(reader) }
+}
+
+def flutterSdkPath = localProperties.getProperty("flutter.sdk")
+if (flutterSdkPath == null) {
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+// Apply the Flutter plugin loader using the correct path
+apply from: new File(flutterSdkPath + "/packages/flutter_tools/gradle/app_plugin_loader.gradle").absolutePath
+
+def plugins = new Properties()
+def pluginsFile = new File(flutterProjectRoot, '.flutter-plugins')
+if (pluginsFile.exists()) {
+    pluginsFile.withReader('UTF-8') { reader -> plugins.load(reader) }
+}
+
+plugins.each { name, path ->
+    def pluginDirectory = flutterProjectRoot.toPath().resolve(path).toFile()
+    include ":$name"
+    project(":$name").projectDir = pluginDirectory
+}
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}

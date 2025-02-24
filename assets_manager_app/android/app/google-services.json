@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "534853045080",
+    "project_id": "assets-9c861",
+    "storage_bucket": "assets-9c861.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:534853045080:android:f84869159746325502332d",
+        "android_client_info": {
+          "package_name": "com.example.Assets_manager_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "534853045080-usb2sov9sehv3vm0v5bh394og1u24mce.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.Assets_manager_app",
+            "certificate_hash": "d6fc8a95d7ecfe1efc6b50cdd1ec51799499d881"
+          }
+        },
+        {
+          "client_id": "534853045080-8ivctpavgtcv167fj5469lour81haotr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYTFtnYoRzfTwa1Ewnu-k9MjOAlJmlYUU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "534853045080-8ivctpavgtcv167fj5469lour81haotr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "534853045080-d2vfulkphfaqujo7mi72o5se0e95mtik.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.assetsManagerApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:534853045080:android:32b1edee279577fb02332d",
+        "android_client_info": {
+          "package_name": "com.example.assets_manager_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "534853045080-8ivctpavgtcv167fj5469lour81haotr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYTFtnYoRzfTwa1Ewnu-k9MjOAlJmlYUU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "534853045080-8ivctpavgtcv167fj5469lour81haotr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "534853045080-d2vfulkphfaqujo7mi72o5se0e95mtik.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.assetsManagerApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
